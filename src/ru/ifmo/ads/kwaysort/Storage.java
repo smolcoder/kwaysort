@@ -36,6 +36,14 @@ public class Storage<E extends Comparable<E>> {
         return new Storage<>(myStorage.subList(pos, Math.min(pos + len, size())));
     }
 
+    public E get(int pos) {
+        return myStorage.get(pos);
+    }
+
+    public void set(int pos, E value) {
+        myStorage.set(pos, value);
+    }
+
     public void readFrom(Storage<E> from, int theirPos, int myPos, int len) {
         write(myPos, from.get(theirPos, len));
     }
