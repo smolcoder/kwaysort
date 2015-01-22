@@ -1,14 +1,18 @@
 package ru.ifmo.ads.kwaysort;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-
+/**
+ * Represents basic storage (RAM, HDD, etc.) operation like read from, write to and so on.
+ *
+ * @see ru.ifmo.ads.kwaysort.RamStorage
+ * @see ru.ifmo.ads.kwaysort.ExternalStorage
+ * */
 public class Storage<E extends Comparable<E>> {
     protected final int mySize;
     protected final List<E> myStorage;
 
-    private int writesCount = 0;
+    private int myWritesCount = 0;
 
     public Storage(int size) {
         mySize = size;
@@ -22,7 +26,7 @@ public class Storage<E extends Comparable<E>> {
     }
 
     public void write(int pos, List<E> data) {
-        writesCount++;
+        myWritesCount++;
         for (int i = pos; i < pos + data.size(); ++i) {
             myStorage.set(i, data.get(i - pos));
         }
@@ -30,10 +34,6 @@ public class Storage<E extends Comparable<E>> {
 
     public void write(int pos, Storage<E> data) {
         write(pos, data.myStorage);
-    }
-
-    public void write(Storage<E> data) {
-        write(0, data.myStorage);
     }
 
     public Storage<E> get(int pos, int len) {
@@ -64,10 +64,6 @@ public class Storage<E extends Comparable<E>> {
         to.write(theirPos, get(myPos, len));
     }
 
-    public void writeTo(Storage<E> to, int theirPos) {
-        to.write(theirPos, get(0, size()));
-    }
-
     public void writeTo(Storage<E> to) {
         to.write(0, get(0, size()));
     }
@@ -92,6 +88,6 @@ public class Storage<E extends Comparable<E>> {
     }
 
     public int getWritesCount() {
-        return writesCount;
+        return myWritesCount;
     }
 }

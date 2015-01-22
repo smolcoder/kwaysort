@@ -4,6 +4,31 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+/**
+ * This is main class that implements k-way merge sort.
+ * <p/>
+ * First, it checks whether whole external data fit the RAM size.
+ * If so, {@link RamStorage#sort()}  base sort} is called. Otherwise, external data
+ * are splitted into {@link Sorter#calculateChunkCount(int, int) chunkCount} chunks and then there are
+ * sorted by base RAM sort.
+ * <p/>
+ * Second, RAM is splitted into {@code chunkCount + 1} parts. {@code chunkCount} parts are 'associated'
+ * with {@code chunkCount} chunks of external memory respectively (where these chunks are already sorted)
+ * using {@link ru.ifmo.ads.kwaysort.Sorter.Chunk}. {@link ru.ifmo.ads.kwaysort.Sorter.Chunk} can load next
+ * part of respected chunk as needed.
+ * <p/>
+ * Then all these parts are merged into last one. When last is full, it is flushed into outer memory storage.
+ * <p/>
+ * This implementation allows sorting via RAM if RAM size is about sqrt(external memory size) or greater.
+ * Of course, we can split external memory into several parts, sort 'em with k-way merge sort, then
+ * run this algorithm on these sorted parts. But in 'real live' it is enough just about ~2 Mb to sort ~300 Gb
+ * basing on this limitation! So there is no need to introduce yet another level of sorting, because it is unlikely
+ * we encounter worst case in practice (in that case we will have another great problems:) ).
+ *
+ * Minimal addressing unit (or loaded block) is array cell.
+ *
+ * @see ru.ifmo.ads.kwaysort.Sorter.Chunk
+ */
 public class Sorter<E extends Comparable<E>> {
 
     private boolean isDebugOutput;
@@ -93,6 +118,11 @@ public class Sorter<E extends Comparable<E>> {
         }
     }
 
+    /**
+     * This class manages data chunk from external memory via part of RAM.
+     * It loads part of chunk into specified place in RAM, smbd works with it, then next part is loaded
+     * and so on.
+     */
     class Chunk {
         int storageLeftBound, storageRightBound;
         int leftInRam, rightInRam;
@@ -104,15 +134,20 @@ public class Sorter<E extends Comparable<E>> {
         final String toString;
         boolean isValid = true;
 
-        Chunk(int ramLeft, int ramRight,  int storageLeft, int storageRight, RamStorage<E> ram, ExternalStorage<E> storage) {
-            if (ramLeft >= ramRight)
+        Chunk(int ramLeft, int ramRight, int storageLeft, int storageRight, RamStorage<E> ram, ExternalStorage<E> storage) {
+            if (ramLeft >= ramRight) {
                 throw new IllegalArgumentException(ramLeft + " >= " + ramRight);
-            if (storageLeft >= storageRight)
+            }
+            if (storageLeft >= storageRight) {
                 throw new IllegalArgumentException(storageLeft + " >= " + storageRight);
-            if (ramRight > ram.size())
+            }
+            if (ramRight > ram.size()) {
                 throw new IllegalArgumentException(ramRight + " >= " + ram.size());
-            if (storageRight > storage.size())
+            }
+
+            if (storageRight > storage.size()) {
                 throw new IllegalArgumentException(ramRight + " >= " + storage.size());
+            }
             toString = "Chunk: ram[" + ramLeft + "," + ramRight + "], storage[" + storageLeft + "," + storageRight + "].";
 
             storageLeftBound = storageLeft;
@@ -127,6 +162,9 @@ public class Sorter<E extends Comparable<E>> {
             load();
         }
 
+        /**
+         * Load next part of chunk.
+         */
         void load() {
             String s = "load: (" + curNotLoadedPosition + ", " + curNotRedPositionInChunk + ", " + rightInRam + ") ->";
             int positionsToRead = Math.min(segmentSize, storageRightBound - curNotLoadedPosition);

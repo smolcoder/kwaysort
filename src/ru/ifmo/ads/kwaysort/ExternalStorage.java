@@ -2,6 +2,12 @@ package ru.ifmo.ads.kwaysort;
 
 import java.util.List;
 
+/**
+ * Represents external memory that is used in k-way merge sort algorithm.
+ * It can be checked whether it is sorted by itself.
+ *
+ * @see ru.ifmo.ads.kwaysort.RamStorage
+ */
 public class ExternalStorage<E extends Comparable<E>> extends Storage<E> {
     public ExternalStorage(int size) {
         super(size);
