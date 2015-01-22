@@ -11,16 +11,13 @@ public class ExternalStorage<E extends Comparable<E>> extends Storage<E> {
         super(data);
     }
 
-    boolean isSorted() {
-        E prev = null;
-        for (E e : myStorage) {
-            if (e == null) return false;
-            if (prev == null) {
-                prev = e;
-            } else {
-                if (prev.compareTo(e) > 0) return false;
-            }
+    int checkIsSorted() {
+        E prev = myStorage.get(0);
+        for (int i = 1; i < myStorage.size(); i++) {
+            E e = myStorage.get(i);
+            if (prev.compareTo(e) > 0) return i - 1;
+            prev = e;
         }
-        return true;
+        return -1;
     }
 }

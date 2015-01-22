@@ -23,8 +23,9 @@ public class Storage<E extends Comparable<E>> {
 
     public void write(int pos, List<E> data) {
         writesCount++;
-        for (int i = pos; i < pos + data.size(); ++i)
+        for (int i = pos; i < pos + data.size(); ++i) {
             myStorage.set(i, data.get(i - pos));
+        }
     }
 
     public void write(int pos, Storage<E> data) {
@@ -36,7 +37,7 @@ public class Storage<E extends Comparable<E>> {
     }
 
     public Storage<E> get(int pos, int len) {
-        return new Storage<>(myStorage.subList(pos, Math.min(pos + len, size())));
+        return new Storage<>(myStorage.subList(pos, pos + len));
     }
 
     public E get(int pos) {
@@ -52,7 +53,7 @@ public class Storage<E extends Comparable<E>> {
     }
 
     public void readFrom(Storage<E> from, int theirPos) {
-        write(0, from.get(theirPos, size()));
+        write(0, from.get(theirPos, Math.min(size(), from.size() - theirPos)));
     }
 
     public void readFrom(Storage<E> from) {
@@ -73,6 +74,10 @@ public class Storage<E extends Comparable<E>> {
 
     public int size() {
         return mySize;
+    }
+
+    public boolean isEmpty() {
+        return mySize == 0;
     }
 
     public void clear() {

@@ -10,6 +10,9 @@ public class Sorter<E extends Comparable<E>> {
 
     public void sort(ExternalStorage<E> inStorage, ExternalStorage<E> outStorage, RamStorage<E> ram) {
         int chunkCount = calculateChunkCount(ram.size(), inStorage.size());
+        if (inStorage.isEmpty() || outStorage.isEmpty() || ram.isEmpty()) {
+            throw new IllegalArgumentException();
+        }
         if (ram.size() < chunkCount + 1) {
             throw new IllegalArgumentException("Ram size less than (chunk count + 1): " + ram.size() + " < " + (chunkCount + 1));
         }
@@ -23,7 +26,7 @@ public class Sorter<E extends Comparable<E>> {
         for (int i = 0; i < chunkCount; ++i) {
             ram.readFrom(inStorage, i * ram.size());
             ram.sort();
-            ram.writeTo(inStorage, i * ram.size());
+            ram.writeTo(inStorage, i * ram.size(), 0, Math.min(ram.size(), inStorage.size() - i * ram.size()));
         }
         mergeSort(inStorage, outStorage, ram, chunkCount);
     }

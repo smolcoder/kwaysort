@@ -11,6 +11,6 @@ public class Main {
         Sorter<Integer> sorter = new Sorter<>();
         sorter.setDebugOutput(true);
         sorter.sort(in, out, ram);
-        System.out.println(out.isSorted());
+        System.out.println(out.checkIsSorted() == -1);
     }
 }
