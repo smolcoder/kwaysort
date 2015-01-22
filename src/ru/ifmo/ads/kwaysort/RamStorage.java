@@ -8,10 +8,6 @@ public class RamStorage<E extends Comparable<E>> extends Storage<E> {
         super(size);
     }
 
-    public RamStorage(List<E> data) {
-        super(data);
-    }
-
     public void sort() {
         Collections.sort(super.myStorage);
     }

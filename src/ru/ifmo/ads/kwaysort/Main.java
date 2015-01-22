@@ -9,6 +9,7 @@ public class Main {
         ExternalStorage<Integer> out = new ExternalStorage<>(16);
         RamStorage<Integer> ram = new RamStorage<Integer>(8);
         Sorter<Integer> sorter = new Sorter<>();
+        sorter.setDebugOutput(true);
         sorter.sort(in, out, ram);
         System.out.println(out.isSorted());
     }

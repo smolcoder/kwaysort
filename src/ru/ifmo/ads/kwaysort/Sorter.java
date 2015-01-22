@@ -5,14 +5,21 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 public class Sorter<E extends Comparable<E>> {
+
+    private boolean isDebugOutput;
+
     public void sort(ExternalStorage<E> inStorage, ExternalStorage<E> outStorage, RamStorage<E> ram) {
-        int chunkCount = prefetchChunkCount(ram.size(), inStorage.size());
-        if (ram.size() < chunkCount + 1)
-            throw new IllegalArgumentException(ram.size() + " < " + (chunkCount + 1));
+        int chunkCount = calculateChunkCount(ram.size(), inStorage.size());
+        if (ram.size() < chunkCount + 1) {
+            throw new IllegalArgumentException("Ram size less than (chunk count + 1): " + ram.size() + " < " + (chunkCount + 1));
+        }
+        debugOutput("Chunk count is " + chunkCount);
         if (chunkCount == 1) {
+            debugOutput("Call base sort and out.");
             baseSort(inStorage, outStorage, ram);
             return;
         }
+        debugOutput("Call base sort on all chunks.");
         for (int i = 0; i < chunkCount; ++i) {
             ram.readFrom(inStorage, i * ram.size());
             ram.sort();
@@ -22,89 +29,113 @@ public class Sorter<E extends Comparable<E>> {
     }
 
     private void mergeSort(ExternalStorage<E> inStorage, ExternalStorage<E> outStorage, RamStorage<E> ram, int chunkCount) {
+        debugOutput("Merge sort: inStorage size = " + inStorage.size() + ", myRam size = " + ram.size());
         int ramChunkSize = ram.size() / (chunkCount + 1);
-        int cacheLeft = chunkCount * ramChunkSize;
-        int cacheRight = ram.size();
-        int curCachePos = cacheLeft;
+        debugOutput("Ram chunk size is " + ramChunkSize);
+        int accumulateChunkLeftBound = chunkCount * ramChunkSize;
+        int curAccumulatePos = accumulateChunkLeftBound;
+        int accumulateLen = ram.size() - accumulateChunkLeftBound;
         int outPosToWrite = 0;
         List<Chunk> chunks = new ArrayList<>();
         for (int i = 0; i < chunkCount; i++) {
-            chunks.add(new Chunk(
-                    i * ramChunkSize, (i + 1) * ramChunkSize,
+            chunks.add(new Chunk(i * ramChunkSize, (i + 1) * ramChunkSize,
                     i * ram.size(), Math.min(inStorage.size(), (i + 1) * ram.size()),
                     ram, inStorage));
         }
         for (Chunk c : chunks) {
-            System.out.println(c);
             c.next();
+            debugOutput(c);
         }
         for (int i = 0; i < inStorage.size(); ++i) {
-            Chunk minC = null;
+            if (curAccumulatePos == ram.size()) {
+                debugOutput("Flush accumulate chunk to out storage.");
+                ram.writeTo(outStorage, outPosToWrite, accumulateChunkLeftBound, accumulateLen);
+                outPosToWrite += accumulateLen;
+                curAccumulatePos = accumulateChunkLeftBound;
+            }
+            Chunk chunkWithMinFirstElement = null;
             for (Chunk c : chunks) {
                 if (!c.isValid()) continue;
-                if (minC == null || c.peek().compareTo(minC.peek()) < 0) {
-                    minC = c;
+                if (chunkWithMinFirstElement == null || c.peek().compareTo(chunkWithMinFirstElement.peek()) < 0) {
+                    chunkWithMinFirstElement = c;
                 }
             }
-            if (minC == null) break;
-            if (curCachePos == cacheRight) {
-                ram.writeTo(outStorage, outPosToWrite, cacheLeft, curCachePos - cacheLeft);
-                outPosToWrite += curCachePos - cacheLeft;
-                curCachePos = cacheLeft;
+            if (chunkWithMinFirstElement == null) {
+                debugOutput("Min chunk is null.");
+                break;
             }
-            ram.set(curCachePos++, minC.peek());
-            minC.next();
+            E nextElement = chunkWithMinFirstElement.peek();
+            debugOutput("Next element is " + nextElement + " in chunk " + chunkWithMinFirstElement);
+            ram.set(curAccumulatePos++, chunkWithMinFirstElement.peek());
+            chunkWithMinFirstElement.next();
         }
-        if (curCachePos > cacheLeft)
-            ram.writeTo(outStorage, outPosToWrite, cacheLeft, curCachePos - cacheLeft);
+        if (curAccumulatePos > accumulateChunkLeftBound) {
+            debugOutput("Flush rest of accumulate chunk to out storage.");
+            ram.writeTo(outStorage, outPosToWrite, accumulateChunkLeftBound, curAccumulatePos - accumulateChunkLeftBound);
+        }
+        debugOutput("Writes count to out storage: " + outStorage.getWritesCount());
+    }
+
+    public boolean isDebugOutput() {
+        return isDebugOutput;
+    }
+
+    public void setDebugOutput(boolean isDebugOutput) {
+        this.isDebugOutput = isDebugOutput;
+    }
+
+    private void debugOutput(Object s) {
+        if (isDebugOutput()) {
+            System.out.println(s);
+        }
     }
 
     class Chunk {
-        int leftBound, rightBound;
-        int rLeft, rRight;
+        int storageLeftBound, storageRightBound;
+        int leftInRam, rightInRam;
         int segmentSize;
         int curNotLoadedPosition;
         int curNotRedPositionInChunk;
-        RamStorage<E> ram;
+        RamStorage<E> myRam;
         ExternalStorage<E> externalStorage;
         final String toString;
         boolean isValid = true;
 
-        Chunk(int ramLeft, int ramRight,  int ESleft, int ESright, RamStorage<E> ram, ExternalStorage<E> es) {
+        Chunk(int ramLeft, int ramRight,  int storageLeft, int storageRight, RamStorage<E> ram, ExternalStorage<E> storage) {
             if (ramLeft >= ramRight)
                 throw new IllegalArgumentException(ramLeft + " >= " + ramRight);
-            if (ESleft >= ESright)
-                throw new IllegalArgumentException(ESleft + " >= " + ESright);
+            if (storageLeft >= storageRight)
+                throw new IllegalArgumentException(storageLeft + " >= " + storageRight);
             if (ramRight > ram.size())
                 throw new IllegalArgumentException(ramRight + " >= " + ram.size());
-            if (ESright > es.size())
-                throw new IllegalArgumentException(ramRight + " >= " + es.size());
-            toString = "Chunk: ram[" + ramLeft + "," + ramRight + "], es[" + ESleft + "," + ESright + "].";
+            if (storageRight > storage.size())
+                throw new IllegalArgumentException(ramRight + " >= " + storage.size());
+            toString = "Chunk: ram[" + ramLeft + "," + ramRight + "], storage[" + storageLeft + "," + storageRight + "].";
 
-            leftBound = ESleft;
-            rightBound = ESright;
+            storageLeftBound = storageLeft;
+            storageRightBound = storageRight;
             segmentSize = ramRight - ramLeft;
-            rLeft = ramLeft;
-            rRight = ramRight;
+            leftInRam = ramLeft;
+            rightInRam = ramRight;
             curNotRedPositionInChunk = ramLeft;
-            curNotLoadedPosition = ESleft;
-            this.ram = ram;
-            externalStorage = es;
+            curNotLoadedPosition = storageLeft;
+            myRam = ram;
+            externalStorage = storage;
             load();
         }
 
         void load() {
-//            System.out.print("load: (" + curNotLoadedPosition + ", " + curNotRedPositionInChunk + ", " + rRight + ") ->");
-            int positionsToRead = Math.min(segmentSize, rightBound- curNotLoadedPosition);
-            ram.readFrom(externalStorage, curNotLoadedPosition, rLeft, positionsToRead);
+            String s = "load: (" + curNotLoadedPosition + ", " + curNotRedPositionInChunk + ", " + rightInRam + ") ->";
+            int positionsToRead = Math.min(segmentSize, storageRightBound - curNotLoadedPosition);
+            myRam.readFrom(externalStorage, curNotLoadedPosition, leftInRam, positionsToRead);
             curNotLoadedPosition += positionsToRead;
-            curNotRedPositionInChunk = rLeft;
-            rRight = rLeft + positionsToRead;
-//            System.out.println(" (" + curNotLoadedPosition + ", " + curNotRedPositionInChunk + ", " + rRight + ")");
+            curNotRedPositionInChunk = leftInRam;
+            rightInRam = leftInRam + positionsToRead;
+            debugOutput(s + " (" + curNotLoadedPosition + ", " + curNotRedPositionInChunk + ", " + rightInRam + ")");
         }
 
         boolean hasNext() {
-            return curNotLoadedPosition < rightBound || curNotRedPositionInChunk < rRight;
+            return curNotLoadedPosition < storageRightBound || curNotRedPositionInChunk < rightInRam;
         }
 
         E next() {
@@ -115,10 +146,10 @@ public class Sorter<E extends Comparable<E>> {
                 }
                 throw new NoSuchElementException(this + " hasn't next element.");
             }
-            if (curNotRedPositionInChunk == rRight) {
+            if (curNotRedPositionInChunk == rightInRam) {
                 load();
             }
-            return ram.get(curNotRedPositionInChunk++);
+            return myRam.get(curNotRedPositionInChunk++);
         }
 
         boolean isValid() {
@@ -126,7 +157,7 @@ public class Sorter<E extends Comparable<E>> {
         }
 
         E peek() {
-            return ram.get(curNotRedPositionInChunk - 1);
+            return myRam.get(curNotRedPositionInChunk - 1);
         }
 
         @Override
@@ -136,7 +167,7 @@ public class Sorter<E extends Comparable<E>> {
     }
 
 
-    public static int prefetchChunkCount(int ramSize, int storageSize) {
+    public static int calculateChunkCount(int ramSize, int storageSize) {
         if (ramSize >= storageSize) {
             return 1;
         }

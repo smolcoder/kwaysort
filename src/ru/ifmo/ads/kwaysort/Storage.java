@@ -8,6 +8,8 @@ public class Storage<E extends Comparable<E>> {
     protected final int mySize;
     protected final List<E> myStorage;
 
+    private int writesCount = 0;
+
     public Storage(int size) {
         mySize = size;
         myStorage = new ArrayList<>(size);
@@ -20,6 +22,7 @@ public class Storage<E extends Comparable<E>> {
     }
 
     public void write(int pos, List<E> data) {
+        writesCount++;
         for (int i = pos; i < pos + data.size(); ++i)
             myStorage.set(i, data.get(i - pos));
     }
@@ -81,5 +84,9 @@ public class Storage<E extends Comparable<E>> {
 
     public String toString() {
         return myStorage.toString();
+    }
+
+    public int getWritesCount() {
+        return writesCount;
     }
 }
