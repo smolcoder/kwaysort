@@ -101,7 +101,7 @@ public class Sorter<E extends Comparable<E>> {
             debugOutput("Flush rest of accumulate chunk to out storage.");
             ram.writeTo(outStorage, outPosToWrite, accumulateChunkLeftBound, curAccumulatePos - accumulateChunkLeftBound);
         }
-        debugOutput("Writes count to out storage: " + outStorage.getWritesCount());
+        debugOutput("Writes count to out storage: " + outStorage.getBlockWritesCount());
     }
 
     public boolean isDebugOutput() {

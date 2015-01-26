@@ -73,24 +73,50 @@ public class SorterTest {
     @Test
     public void testRandom() throws Exception {
         SORTER.setDebugOutput(false);
-        doRandomTest(10000, 200);
-        doRandomTest(100000, 1000);
-        for (int i = 1000; i < 110000; i += 1000) {
+        doRandomTest(10000, 200, false);
+        doRandomTest(100000, 1000, false);
+        for (int i = 100000; i < 110000; i += 1000) {
             int inSize = i;
             if (i % 2000 == 0) {
                 inSize += RANDOM.nextInt(500);
             }
             int ramSize = (1 + RANDOM.nextInt(4)) * ((int)Math.sqrt(inSize) + 100);
-            doRandomTest(inSize, ramSize);
+            doRandomTest(inSize, ramSize, false);
         }
     }
 
-    private void doRandomTest(int inSize, int ramSize) {
+    @Test
+    public void testBuildStatistic() throws Exception {
+        SORTER.setDebugOutput(false);
+        Storage.BLOCK_SIZE = 128;
+
+        System.out.println(String.format("%3s\t%6s\t%6s\t%5s\t%6s\t%6s",
+                "|in|", "|ram|", "block", "reads", "writes", "seeks"));
+
+
+        for (int i = 20000; i <= 140000; i += 40000) {
+            for (int b = 32; b <= 256; b *= 2) {
+                Storage.BLOCK_SIZE = b;
+                for (int j = 500; j <= i; j *= 2) {
+
+                    doRandomTest(i, j, true);
+                }
+                System.out.println("--------------------------------------------");
+            }
+        }
+    }
+
+    private void doRandomTest(int inSize, int ramSize, boolean printStatistics) {
         ExternalStorage<Integer> in = new ExternalStorage<>(generateRandomList(inSize));
         ExternalStorage<Integer> out = new ExternalStorage<>(inSize);
         RamStorage<Integer> ram = new RamStorage<>(ramSize);
         SORTER.sort(in, out, ram);
         assertIsSorted(out);
+        if (printStatistics) {
+            System.out.println(String.format("%6d\t%6d\t%6d\t%5d\t%6d\t%6d", inSize, ramSize, Storage.BLOCK_SIZE,
+                    (in.getBlockWritesCount() + out.getBlockWritesCount()),
+                    (in.getBlockReadsCount() + out.getBlockReadsCount()), (in.getSeeksCount() + out.getSeeksCount())));
+        }
     }
 
     private void assertIsSorted(ExternalStorage<Integer> out) {

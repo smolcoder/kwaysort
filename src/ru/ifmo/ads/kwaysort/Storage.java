@@ -9,10 +9,15 @@ import java.util.List;
  * @see ru.ifmo.ads.kwaysort.ExternalStorage
  * */
 public class Storage<E extends Comparable<E>> {
+    public static int BLOCK_SIZE = 32;
+
     protected final int mySize;
     protected final List<E> myStorage;
 
-    private int myWritesCount = 0;
+    private int myBlockWritesCount = 0;
+    private int myBlockReadsCount = 0;
+
+    private int mySeeksCount = 0;
 
     public Storage(int size) {
         mySize = size;
@@ -26,7 +31,12 @@ public class Storage<E extends Comparable<E>> {
     }
 
     public void write(int pos, List<E> data) {
-        myWritesCount++;
+//        System.out.println(data.size() / BLOCK_SIZE);
+        myBlockWritesCount += data.size() / BLOCK_SIZE;
+        if (data.size() % BLOCK_SIZE > 0) myBlockWritesCount++;
+
+        mySeeksCount++;
+
         for (int i = pos; i < pos + data.size(); ++i) {
             myStorage.set(i, data.get(i - pos));
         }
@@ -37,6 +47,11 @@ public class Storage<E extends Comparable<E>> {
     }
 
     public Storage<E> get(int pos, int len) {
+        myBlockReadsCount += len / BLOCK_SIZE;
+        if (len % BLOCK_SIZE > 0) myBlockReadsCount++;
+
+        mySeeksCount++;
+
         return new Storage<>(myStorage.subList(pos, pos + len));
     }
 
@@ -87,7 +102,15 @@ public class Storage<E extends Comparable<E>> {
         return myStorage.toString();
     }
 
-    public int getWritesCount() {
-        return myWritesCount;
+    public int getBlockWritesCount() {
+        return myBlockWritesCount;
+    }
+
+    public int getBlockReadsCount() {
+        return myBlockReadsCount;
+    }
+
+    public int getSeeksCount() {
+        return mySeeksCount;
     }
 }
